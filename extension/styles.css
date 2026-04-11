@@ -44,35 +44,156 @@
   border: 1px solid #dadce0;
 }
 
-/* Tooltip */
+/* Extension Dashboard UI */
 .mailfort-badge .mf-tooltip {
   visibility: hidden;
   position: absolute;
-  top: 100%;
+  top: calc(100% + 12px);
   left: 50%;
   transform: translateX(-50%) translateY(8px);
-  background-color: #202124;
+  background: rgba(20, 24, 39, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   color: #fff;
-  padding: 10px;
-  border-radius: 8px;
-  white-space: nowrap;
-  font-size: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  width: 320px;
+  text-align: left;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255,255,255,0.1);
   z-index: 99999;
   opacity: 0;
-  transition: opacity 0.2s, visibility 0.2s, transform 0.2s;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
-  font-weight: normal;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.3s;
   pointer-events: none;
+  cursor: default;
+  font-weight: normal;
 }
 
 .mailfort-badge:hover .mf-tooltip {
   visibility: visible;
   opacity: 1;
-  transform: translateX(-50%) translateY(4px);
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
 }
 
-.mailfort-badge .mf-tooltip p {
-  margin: 4px 0;
+.mf-tooltip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.mf-tooltip-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+  background: linear-gradient(90deg, #60a5fa, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.mf-threat-score {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.1);
+}
+
+.mf-score-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.mf-score-item {
+  background: rgba(255,255,255,0.05);
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.mf-score-label {
+  font-size: 11px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.mf-score-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.mf-risk-high { color: #f87171 !important; }
+.mf-risk-med { color: #fbbf24 !important; }
+.mf-risk-low { color: #34d399 !important; }
+
+.mf-forensic-section {
+  background: rgba(0,0,0,0.2);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.mf-forensic-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #cbd5e1;
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mf-forensic-text {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #e2e8f0;
+  margin: 0 0 10px 0;
+}
+
+.mf-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mf-tag {
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: rgba(248, 113, 113, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(248, 113, 113, 0.2);
+}
+
+.mf-blockchain-tag {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.mf-blockchain-tag svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* Popup specific styles */

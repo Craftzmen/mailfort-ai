@@ -66,13 +66,76 @@ function createBadge(result) {
   const verdict = result.final_verdict ? result.final_verdict.toLowerCase() : 'unknown';
   badge.classList.add(`mailfort-${verdict}`);
   
+  const getRiskClass = (score) => {
+    if (score >= 70) return 'mf-risk-high';
+    if (score >= 40) return 'mf-risk-med';
+    return 'mf-risk-low';
+  };
+
+  const threatScore = Math.floor(result.threat_score || 0);
+  const colorClass = getRiskClass(threatScore);
+
+  let riskFactorsHtml = '';
+  if (result.forensic_report && result.forensic_report.risk_factors && result.forensic_report.risk_factors.length > 0) {
+    const tags = result.forensic_report.risk_factors.slice(0,3).map(rf => `<span class="mf-tag">${rf}</span>`).join('');
+    riskFactorsHtml = `
+      <div class="mf-tag-row" style="margin-bottom: 12px;">
+        ${tags}
+      </div>
+    `;
+  }
+
+  let blockchainHtml = '';
+  if (result.blockchain_tx_id) {
+    blockchainHtml = `
+      <div class="mf-blockchain-tag" title="${result.blockchain_tx_id}">
+        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-3zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-2.33v8.02z"/></svg>
+        Blockchain Verified
+      </div>
+    `;
+  }
+
+  let summaryHtml = '';
+  if (result.forensic_report && result.forensic_report.summary) {
+    summaryHtml = `
+      <div class="mf-forensic-section">
+        <div class="mf-forensic-title">📋 AI Forensic Summary</div>
+        <p class="mf-forensic-text">${result.forensic_report.summary}</p>
+        ${riskFactorsHtml}
+      </div>
+    `;
+  }
+
   badge.innerHTML = `
     <span class="mf-icon">🛡️</span>
     <span class="mf-text">MailFort: ${result.final_verdict || 'Scanned'}</span>
     <div class="mf-tooltip">
-      <p>AI Score: ${result.ai_score !== undefined ? (result.ai_score * 100).toFixed(1) : 0}%</p>
-      <p>URL Score: ${result.url_score !== undefined ? (result.url_score * 100).toFixed(1) : 0}%</p>
-      <p>Attachment Score: ${result.attachment_score !== undefined ? (result.attachment_score * 100).toFixed(1) : 0}%</p>
+      <div class="mf-tooltip-header">
+        <h3 class="mf-tooltip-title">Detailed Analysis</h3>
+        <div class="mf-threat-score ${colorClass}">Threat: ${threatScore}%</div>
+      </div>
+      
+      <div class="mf-score-grid">
+        <div class="mf-score-item">
+          <span class="mf-score-label">NLP Sentiment</span>
+          <span class="mf-score-value ${getRiskClass(result.ai_score)}">${Math.floor(result.ai_score || 0)}%</span>
+        </div>
+        <div class="mf-score-item">
+          <span class="mf-score-label">URL Scan</span>
+          <span class="mf-score-value ${getRiskClass(result.url_score)}">${Math.floor(result.url_score || 0)}%</span>
+        </div>
+        <div class="mf-score-item">
+          <span class="mf-score-label">Attachment</span>
+          <span class="mf-score-value ${getRiskClass(result.attachment_score)}">${Math.floor(result.attachment_score || 0)}%</span>
+        </div>
+        <div class="mf-score-item">
+          <span class="mf-score-label">Meta Header</span>
+          <span class="mf-score-value ${getRiskClass(result.header_score)}">${Math.floor(result.header_score || 0)}%</span>
+        </div>
+      </div>
+
+      ${summaryHtml}
+      ${blockchainHtml}
     </div>
   `;
   

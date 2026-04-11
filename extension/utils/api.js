@@ -18,14 +18,28 @@ export async function analyzeEmail(payload) {
     const result = data.result || {};
 
     // Flatten the response for the extension UI
+    const aiConf = result.ai_analysis?.confidence || 0;
+    const aiLabel = result.ai_analysis?.label || 0;
+    const aiScore = aiLabel === 1 ? aiConf * 100 : 0;
+
+    const urls = result.url_analysis?.results || [];
+    const urlScore = urls.reduce((max, u) => Math.max(max, u.ml_analysis?.score || 0), 0);
+
+    const attachments = result.attachment_analysis?.files || [];
+    const attScore = attachments.reduce((max, a) => Math.max(max, a.ml_analysis?.score || 0), 0);
+    
+    const headerScore = result.header_analysis?.ml_analysis?.score || 0;
+
     return {
       final_verdict: result.final_verdict || 'Unknown',
-      ai_score: result.scores?.ai_score || 0,
-      url_score: result.scores?.url_score || 0,
-      attachment_score: result.scores?.attachment_score || 0,
-      ip_score: result.scores?.ip_score || 0,
-      threat_score: result.scores?.threat_score || 0,
-      log_id: data.log_id
+      ai_score: aiScore,
+      url_score: urlScore,
+      attachment_score: attScore,
+      header_score: headerScore,
+      threat_score: result.final_score || 0,
+      log_id: data.log_id,
+      forensic_report: result.forensic_report || null,
+      blockchain_tx_id: result.blockchain_tx_id || null
     };
   } catch (error) {
     console.error('MailFort API Error:', error);
