@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+pydantic
+python-dotenv
+pandas
+scikit-learn
+transformers
+torch
+scipy
+numpy
+# Optional but recommended for .msg parsing:
+extract-msg

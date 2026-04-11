@@ -1,0 +1,12 @@
+[
+  {"clean_body": "Please click here to verify your password immediately to avoid account suspension.", "label": 1},
+  {"clean_body": "Urgent: Your bank account is compromised. Click this link to verify your identity.", "label": 1},
+  {"clean_body": "Hi John, could you please send the invoice for the last week's work when you get a chance?", "label": 0},
+  {"clean_body": "Reminder: We have a meeting tomorrow at 10 AM to discuss the new project.", "label": 0},
+  {"clean_body": "Dear customer, your login was suspended. Verify your credentials here.", "label": 1},
+  {"clean_body": "Hello team, attached is the report for Q3. Please review.", "label": 0},
+  {"clean_body": "Security Alert! Immediate action required. Update your bank login details.", "label": 1},
+  {"clean_body": "Happy birthday! Let's get together for lunch.", "label": 0},
+  {"clean_body": "Your invoice is ready. Click here to pay immediately.", "label": 1},
+  {"clean_body": "Looking forward to checking out the new restaurant with you.", "label": 0}
+]
