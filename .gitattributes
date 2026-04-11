@@ -1,0 +1,2 @@
+MailFortAI/data/*.csv filter=lfs diff=lfs merge=lfs -text
+MailFortAI/data/*.db filter=lfs diff=lfs merge=lfs -text

@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "MailFort AI - Phishing Detector",
+  "version": "1.0.0",
+  "description": "Real-time AI phishing detection for your inbox.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://mail.google.com/*",
+    "*://outlook.office.com/*",
+    "*://outlook.live.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://mail.google.com/*",
+        "*://outlook.office.com/*",
+        "*://outlook.live.com/*"
+      ],
+      "css": ["styles.css"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "MailFort AI Status"
+  }
+}

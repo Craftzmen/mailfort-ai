@@ -1,0 +1,176 @@
+/* extension/styles.css */
+.mailfort-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 12px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.mailfort-badge .mf-icon {
+  margin-right: 6px;
+}
+
+.mailfort-safe {
+  background-color: #e6f4ea;
+  color: #137333;
+  border: 1px solid #ceead6;
+}
+
+.mailfort-suspicious {
+  background-color: #fef7e0;
+  color: #b08d00;
+  border: 1px solid #fbe9a9;
+}
+
+.mailfort-phishing,
+.mailfort-malicious {
+  background-color: #fce8e6;
+  color: #c5221f;
+  border: 1px solid #fad2cf;
+}
+
+.mailfort-scanning,
+.mailfort-error {
+  background-color: #f1f3f4;
+  color: #5f6368;
+  border: 1px solid #dadce0;
+}
+
+/* Tooltip */
+.mailfort-badge .mf-tooltip {
+  visibility: hidden;
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background-color: #202124;
+  color: #fff;
+  padding: 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+  font-size: 12px;
+  z-index: 99999;
+  opacity: 0;
+  transition: opacity 0.2s, visibility 0.2s, transform 0.2s;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+  font-weight: normal;
+  pointer-events: none;
+}
+
+.mailfort-badge:hover .mf-tooltip {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(-50%) translateY(4px);
+}
+
+.mailfort-badge .mf-tooltip p {
+  margin: 4px 0;
+}
+
+/* Popup specific styles */
+body.mailfort-popup {
+  width: 320px;
+  padding: 0;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #202124;
+  background-color: #fafbfc;
+}
+
+.popup-header {
+  background: linear-gradient(135deg, #1a73e8 0%, #174ea6 100%);
+  color: white;
+  padding: 16px;
+  text-align: center;
+}
+
+.popup-header h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.popup-content {
+  padding: 16px;
+}
+
+.score-card {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.score-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.score-row.total {
+  font-weight: 600;
+  font-size: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+}
+
+.verdict-tag {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 16px;
+  text-transform: capitalize;
+}
+
+.verdict-safe {
+  background: #e6f4ea;
+  color: #137333;
+}
+
+.verdict-suspicious {
+  background: #fef7e0;
+  color: #b08d00;
+}
+
+.verdict-phishing,
+.verdict-malicious {
+  background: #fce8e6;
+  color: #c5221f;
+}
+
+.btn {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  background-color: #1a73e8;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  text-align: center;
+}
+
+.btn:hover {
+  background-color: #1557b0;
+}
+
+.no-data {
+  text-align: center;
+  color: #5f6368;
+  padding: 24px;
+}
