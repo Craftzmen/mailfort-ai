@@ -13,7 +13,6 @@ import {
   X,
   Bell,
   Search,
-  Activity,
   FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,8 +34,10 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const isAuthenticated =
+    typeof window !== "undefined" && Boolean(localStorage.getItem("authToken"));
 
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Enter") {
@@ -53,13 +54,10 @@ export default function DashboardLayout({
 
   // Auth guard — runs only on client after hydration
   useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    if (!token) {
+    if (!isAuthenticated) {
       router.replace("/login");
-    } else {
-      setIsAuthenticated(true);
     }
-  }, [router]);
+  }, [isAuthenticated, router]);
 
   const handleLogout = () => {
     localStorage.removeItem("authToken");
@@ -67,8 +65,7 @@ export default function DashboardLayout({
     router.replace("/login");
   };
 
-  // Show loading state while checking auth to avoid hydration flash
-  if (isAuthenticated === null) {
+  if (!isAuthenticated) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-950">
         <div className="flex flex-col items-center gap-4">

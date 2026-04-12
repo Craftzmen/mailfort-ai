@@ -91,6 +91,8 @@ Login with any credentials (demo mode).
 | GET | `/api/stats` | Aggregate verdict statistics |
 | GET | `/api/emails` | List email analysis logs |
 | GET | `/api/emails/{id}` | Full email analysis detail |
+| GET | `/api/emails/{id}/report` | Retrieve generated forensic report (JSON) |
+| GET | `/api/emails/{id}/report?format=markdown` | Retrieve generated forensic report (Markdown) |
 | POST | `/analyze/email` | Submit email for analysis |
 | POST | `/phase1/run` | Run preprocessing pipeline |
 
@@ -102,6 +104,13 @@ Login with any credentials (demo mode).
 4. **IP Reputation** — AbuseIPDB scoring for sender infrastructure
 
 The system produces a unified verdict: **Safe**, **Suspicious**, or **Malicious**.
+
+Each analysis now generates a structured forensic report with:
+
+- module-level findings (NLP, URL, header, attachment)
+- risk factors and recommendations
+- report metadata and severity level
+- markdown export for executive/client sharing
 
 ## Environment Variables
 

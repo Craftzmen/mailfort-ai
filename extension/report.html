@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MailFort AI Forensic Report</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="mailfort-report-page">
+  <main class="report-shell">
+    <header class="report-top">
+      <h1>MailFort AI Forensic Report</h1>
+      <div class="report-actions">
+        <button class="btn btn-secondary" id="refresh-report">Refresh</button>
+        <button class="btn" id="download-json">Download JSON</button>
+        <button class="btn" id="download-md">Download Markdown</button>
+      </div>
+    </header>
+
+    <section id="report-state" class="report-state">Loading report...</section>
+    <section id="report-content" class="report-content hidden"></section>
+  </main>
+
+  <script src="report.js"></script>
+</body>
+</html>

@@ -25,10 +25,13 @@ export async function analyzeEmail(payload) {
     const urls = result.url_analysis?.results || [];
     const urlScore = urls.reduce((max, u) => Math.max(max, u.ml_analysis?.score || 0), 0);
 
-    const attachments = result.attachment_analysis?.files || [];
+    const attachments = result.attachment_analysis?.files || result.attachment_analysis?.results || [];
     const attScore = attachments.reduce((max, a) => Math.max(max, a.ml_analysis?.score || 0), 0);
 
     const headerScore = result.header_analysis?.ml_analysis?.score || 0;
+
+    const reportEndpoint = data.report_endpoint || (data.log_id ? `/api/emails/${data.log_id}/report` : null);
+    const markdownEndpoint = data.report_markdown_endpoint || (data.log_id ? `/api/emails/${data.log_id}/report?format=markdown` : null);
 
     return {
       final_verdict: result.final_verdict || 'Unknown',
@@ -39,7 +42,10 @@ export async function analyzeEmail(payload) {
       threat_score: result.final_score || 0,
       log_id: data.log_id,
       forensic_report: result.forensic_report || null,
-      blockchain_tx_id: result.blockchain_tx_id || null
+      blockchain_tx_id: result.blockchain_tx_id || null,
+      report_endpoint: reportEndpoint,
+      report_markdown_endpoint: markdownEndpoint,
+      analyzed_at: Date.now(),
     };
   } catch (error) {
     console.error('MailFort API Error:', error);

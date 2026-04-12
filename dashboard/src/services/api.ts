@@ -15,23 +15,94 @@ export interface EmailLog {
   created_at: string;
 }
 
+export interface EmailAnalysisResult {
+  ai_analysis?: {
+    label?: number;
+    confidence?: number;
+    score?: number;
+    reasoning?: string[];
+    [key: string]: unknown;
+  };
+  url_analysis?: {
+    results?: Array<Record<string, unknown>>;
+    [key: string]: unknown;
+  };
+  attachment_analysis?: {
+    results?: Array<Record<string, unknown>>;
+    files?: Array<Record<string, unknown>>;
+    [key: string]: unknown;
+  };
+  ip_analysis?: {
+    results?: Array<Record<string, unknown>>;
+    [key: string]: unknown;
+  };
+  final_score?: number;
+  [key: string]: unknown;
+}
+
 export interface EmailDetail extends EmailLog {
   body: string;
-  analysis_result: any;
+  analysis_result: EmailAnalysisResult | null;
   blockchain_tx_id: string | null;
   evidence_hash: string | null;
-  forensic_report: {
-    summary: string;
-    risk_factors: string[];
-    forensic_details: {
-      nlp: string[];
-      url: string[];
-      header: string[];
-      attachment: string[];
-    };
-    blockchain_verified: boolean;
-    blockchain_tx: string | null;
-  } | null;
+  forensic_report: ForensicReport | null;
+}
+
+export interface ForensicFinding {
+  id?: string;
+  module?: string;
+  severity?: string;
+  title?: string;
+  evidence?: Record<string, unknown>;
+  recommendation?: string;
+}
+
+export interface ForensicIndicators {
+  suspicious_urls?: string[];
+  suspicious_attachments?: string[];
+  header_anomalies?: string[];
+}
+
+export interface ForensicModuleScores {
+  nlp?: number;
+  url?: number;
+  header?: number;
+  attachment?: number;
+  final?: number;
+}
+
+export interface ForensicReport {
+  report_id?: string;
+  report_version?: string;
+  generated_at?: string;
+  final_verdict?: string;
+  severity?: string;
+  risk_score?: number;
+  summary?: string;
+  risk_factors?: string[];
+  module_scores?: ForensicModuleScores;
+  findings?: ForensicFinding[];
+  recommendations?: string[];
+  indicators?: ForensicIndicators;
+  forensic_details?: {
+    nlp?: string[];
+    url?: string[];
+    header?: string[];
+    attachment?: string[];
+    [key: string]: string[] | undefined;
+  };
+  blockchain_verified?: boolean;
+  blockchain_tx?: string | null;
+  markdown_report?: string;
+}
+
+export interface EmailReportResponse {
+  email_id: number;
+  sender: string;
+  subject: string;
+  verdict: string;
+  created_at: string;
+  report: ForensicReport;
 }
 
 export interface ReportIpResponse {
@@ -77,6 +148,20 @@ export const emailsService = {
   getEmail: async (id: number): Promise<EmailDetail> => {
     const response = await api.get(`/emails/${id}`);
     return response.data;
+  },
+
+  getEmailReport: async (id: number): Promise<EmailReportResponse> => {
+    const response = await api.get(`/emails/${id}/report`);
+    return response.data;
+  },
+
+  getEmailReportMarkdown: async (id: number): Promise<string> => {
+    const response = await api.get(`/emails/${id}/report`, {
+      params: { format: "markdown" },
+      responseType: "text",
+      headers: { Accept: "text/markdown" },
+    });
+    return response.data as string;
   },
 
   searchEmails: async (

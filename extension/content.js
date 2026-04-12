@@ -106,6 +106,11 @@ function createBadge(result) {
     `;
   }
 
+  let reportButtonHtml = '';
+  if (result.log_id) {
+    reportButtonHtml = '<button class="mf-open-report-btn" type="button">Open Full Report</button>';
+  }
+
   badge.innerHTML = `
     <span class="mf-icon">🛡️</span>
     <span class="mf-text">MailFort: ${result.final_verdict || 'Scanned'}</span>
@@ -136,8 +141,18 @@ function createBadge(result) {
 
       ${summaryHtml}
       ${blockchainHtml}
+      ${reportButtonHtml}
     </div>
   `;
+
+  const reportButton = badge.querySelector('.mf-open-report-btn');
+  if (reportButton) {
+    reportButton.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      chrome.runtime.sendMessage({ action: 'open_report_page' });
+    });
+  }
   
   return badge;
 }

@@ -43,4 +43,6 @@ def analyze_email_endpoint(
         "message": "Email analysis completed",
         "result": analysis_result,
         "log_id": email_log.id,
+        "report_endpoint": f"/api/emails/{email_log.id}/report",
+        "report_markdown_endpoint": f"/api/emails/{email_log.id}/report?format=markdown",
     }

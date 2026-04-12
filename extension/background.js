@@ -1,6 +1,12 @@
 import { analyzeEmail } from './utils/api.js';
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'open_report_page') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('report.html') });
+    sendResponse({ success: true });
+    return false;
+  }
+
   if (request.action === 'analyze_email') {
     analyzeEmail(request.payload)
       .then(result => {

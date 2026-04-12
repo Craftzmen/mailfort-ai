@@ -1,5 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
   const contentDiv = document.getElementById('popup-content');
+  const toScore = (value) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : 0;
+  };
 
   chrome.storage.local.get(['lastScan'], (result) => {
     const scanData = result.lastScan;
@@ -24,25 +28,30 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="score-card">
         <div class="score-row">
           <span>AI Content Score</span>
-          <span>${scanData.ai_score !== undefined ? (scanData.ai_score * 100).toFixed(1) : 0}%</span>
+          <span>${toScore(scanData.ai_score).toFixed(1)}%</span>
         </div>
         <div class="score-row">
           <span>URL Safety Score</span>
-          <span>${scanData.url_score !== undefined ? (scanData.url_score * 100).toFixed(1) : 0}%</span>
+          <span>${toScore(scanData.url_score).toFixed(1)}%</span>
         </div>
         <div class="score-row">
           <span>Attachment Score</span>
-          <span>${scanData.attachment_score !== undefined ? (scanData.attachment_score * 100).toFixed(1) : 0}%</span>
+          <span>${toScore(scanData.attachment_score).toFixed(1)}%</span>
+        </div>
+        <div class="score-row">
+          <span>Header Score</span>
+          <span>${toScore(scanData.header_score).toFixed(1)}%</span>
+        </div>
+        <div class="score-row total">
+          <span>Threat Score</span>
+          <span>${toScore(scanData.threat_score).toFixed(1)}%</span>
         </div>
       </div>
-      <button class="btn" id="view-report-btn">View Detailed Report</button>
+      <button class="btn" id="view-report-btn">Open Generated Report</button>
     `;
 
     document.getElementById('view-report-btn').addEventListener('click', () => {
-      // In a real scenario, this would open the dashboard
-      // Note: alert() is not strongly supported in v3 popups, but usually works or fails silently depending on chrome version
-      // Better to open a new tab securely.
-      chrome.tabs.create({ url: 'http://localhost:3000/dashboard' }); // assuming dashboard URL
+      chrome.tabs.create({ url: chrome.runtime.getURL('report.html') });
     });
   });
 });

@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { 
   Search, 
   ExternalLink, 
+  FileText,
   CheckCircle2, 
   AlertTriangle, 
   XCircle,
@@ -205,7 +206,7 @@ function EmailLogsContent() {
           <Table>
             <TableHeader className="bg-slate-950/40">
               <TableRow className="border-white/5 hover:bg-transparent">
-                <TableHead className="text-slate-400 font-semibold w-[300px]">
+                <TableHead className="text-slate-400 font-semibold w-75">
                   <div className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
                     Sender <ArrowUpDown className="w-3 h-3" />
                   </div>
@@ -257,17 +258,34 @@ function EmailLogsContent() {
                 filteredEmails.map((email) => (
                   <TableRow key={email.id} className="border-white/5 hover:bg-white/5 transition-colors group">
                     <TableCell className="font-medium text-slate-200">{email.sender}</TableCell>
-                    <TableCell className="text-slate-400 truncate max-w-[400px]">{email.subject}</TableCell>
+                    <TableCell className="text-slate-400 truncate max-w-100">{email.subject}</TableCell>
                     <TableCell>{getVerdictBadge(email.verdict)}</TableCell>
                     <TableCell className="text-right text-slate-500 font-mono text-xs whitespace-nowrap">
                        {format(new Date(email.created_at), "yyyy-MM-dd HH:mm:ss")}
                     </TableCell>
                     <TableCell>
-                      <Link href={`/emails/${email.id}`}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 group-hover:text-primary group-hover:bg-primary/10 transition-all">
-                          <ExternalLink className="w-4 h-4" />
-                        </Button>
-                      </Link>
+                      <div className="flex items-center justify-end gap-1">
+                        <Link href={`/emails/${email.id}#forensic-report`}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-slate-500 group-hover:text-sky-400 group-hover:bg-sky-500/10 transition-all"
+                            title="Open generated report"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </Button>
+                        </Link>
+                        <Link href={`/emails/${email.id}`}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-slate-500 group-hover:text-primary group-hover:bg-primary/10 transition-all"
+                            title="Open full analysis"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                        </Link>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

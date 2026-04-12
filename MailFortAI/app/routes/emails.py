@@ -1,6 +1,9 @@
 """Email log CRUD endpoints."""
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -69,6 +72,43 @@ def get_email(email_id: int, db: Session = Depends(get_db)):
         "evidence_hash": email.evidence_hash,
         "forensic_report": email.forensic_report,
         "created_at": email.created_at,
+    }
+
+
+@router.get("/emails/{email_id}/report")
+def get_email_report(
+    email_id: int,
+    format: str = Query("json", pattern="^(json|markdown)$"),
+    db: Session = Depends(get_db),
+):
+    """Return a generated forensic report in JSON or markdown format."""
+    email = db.query(EmailLog).filter(EmailLog.id == email_id).first()
+    if not email:
+        raise HTTPException(status_code=404, detail="Email not found")
+
+    report: Any = email.forensic_report
+    if not isinstance(report, dict) or not report:
+        raise HTTPException(status_code=404, detail="Forensic report not found for this email")
+
+    if format == "markdown":
+        markdown_report = report.get("markdown_report")
+        if not isinstance(markdown_report, str) or not markdown_report.strip():
+            markdown_report = (
+                "# MailFort AI Forensic Report\n\n"
+                f"Email ID: {email.id}\n"
+                f"Verdict: {email.verdict}\n\n"
+                f"Summary: {report.get('summary', 'No summary available.')}\n"
+            )
+
+        return PlainTextResponse(markdown_report, media_type="text/markdown")
+
+    return {
+        "email_id": email.id,
+        "sender": email.sender,
+        "subject": email.subject,
+        "verdict": email.verdict,
+        "created_at": email.created_at,
+        "report": report,
     }
 
 

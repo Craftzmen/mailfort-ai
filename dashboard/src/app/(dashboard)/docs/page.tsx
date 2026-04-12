@@ -67,6 +67,22 @@ const endpoints: Endpoint[] = [
     badgeColor: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",
   },
   {
+    method: "GET",
+    path: "/api/emails/{id}/report",
+    description:
+      "Retrieve the generated forensic report package for one analyzed email (risk factors, findings, recommendations, indicators).",
+    badge: "Report",
+    badgeColor: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+  },
+  {
+    method: "GET",
+    path: "/api/emails/{id}/report?format=markdown",
+    description:
+      "Export the same generated forensic report as Markdown for executive sharing and PDF conversion workflows.",
+    badge: "Report",
+    badgeColor: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+  },
+  {
     method: "POST",
     path: "/analyze/email",
     description:
@@ -149,7 +165,7 @@ export default function DocsPage() {
 
       {/* Architecture Overview */}
       <Card className="bg-white/5 border-white/5 overflow-hidden">
-        <div className="p-1 bg-gradient-to-r from-primary/20 via-blue-500/10 to-transparent" />
+        <div className="p-1 bg-linear-to-r from-primary/20 via-blue-500/10 to-transparent" />
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Server className="w-5 h-5 text-primary" />
@@ -226,7 +242,7 @@ export default function DocsPage() {
               <div className="flex items-center gap-3 min-w-0">
                 <span
                   className={cn(
-                    "inline-flex items-center justify-center text-[10px] font-bold font-mono uppercase px-2.5 py-1 rounded-md min-w-[50px] text-center",
+                    "inline-flex items-center justify-center text-[10px] font-bold font-mono uppercase px-2.5 py-1 rounded-md min-w-12.5 text-center",
                     ep.method === "GET"
                       ? "bg-emerald-500/20 text-emerald-400"
                       : "bg-amber-500/20 text-amber-400"
