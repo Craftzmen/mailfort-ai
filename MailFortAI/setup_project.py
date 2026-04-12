@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 DIRECTORIES = [
-    "data/raw/enron",
+    "data/raw/legitimate",
     "data/raw/phishing",
     "data/cache",
     "data/processed",

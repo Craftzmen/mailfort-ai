@@ -26,7 +26,7 @@ def process_dataset(raw_root: Path, processed_root: Path) -> Dict[str, int]:
     }
 
     summary["legitimate_count"] = _process_directory(
-        input_dir=raw_root / "enron",
+        input_dir=raw_root / "legitimate",
         output_dir=processed_root / "legitimate",
         label="legitimate",
         summary=summary,

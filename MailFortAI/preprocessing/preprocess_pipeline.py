@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 def run_phase1(
     project_root: Path,
-    download_enron: bool = False,
 ) -> Dict[str, int]:
     """Run full Phase 1: data collection + preprocessing."""
     raw_dir = project_root / "data" / "raw"
@@ -25,7 +24,6 @@ def run_phase1(
 
     collect_datasets(
         raw_data_dir=raw_dir,
-        download_enron=download_enron,
     )
 
     summary = process_dataset(raw_root=raw_dir, processed_root=processed_dir)

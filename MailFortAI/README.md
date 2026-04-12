@@ -4,7 +4,7 @@ AI-powered email forensics and phishing detection setup.
 
 ## Structure
 
-- `data/raw/` for source datasets (Enron + optional local phishing samples)
+- `data/raw/` for source datasets (local legitimate and phishing samples)
 - `data/processed/` for normalized JSON output
 - `preprocessing/` for dataset collection and preprocessing logic
 - `app/threat_intel/` for OpenPhish, VirusTotal, and AbuseIPDB services
@@ -28,9 +28,7 @@ Note: `email`, `hashlib`, and `json` are part of Python's standard library and d
 
 ## Dataset Collection
 
-### Enron
-
-Automatic download is supported by the Phase 1 pipeline (`--download-enron`).
+Place your datasets in `data/raw/legitimate` and `data/raw/phishing`.
 
 ### Threat Intelligence APIs
 
@@ -45,12 +43,6 @@ export ABUSEIPDB_API_KEY="your_key"
 
 ```bash
 python app.py --run-phase1
-```
-
-With dataset download:
-
-```bash
-python app.py --run-phase1 --download-enron
 ```
 
 ## Runtime Threat Analysis API

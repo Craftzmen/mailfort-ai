@@ -5,7 +5,7 @@ Usage:
     uvicorn app:app --port 8000 --reload
 
     # Or run the preprocessing pipeline
-    python main.py --run-phase1 [--download-enron]
+    python main.py --run-phase1
 """
 
 from __future__ import annotations
@@ -27,11 +27,6 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Run dataset collection and preprocessing pipeline",
     )
-    parser.add_argument(
-        "--download-enron",
-        action="store_true",
-        help="Download and extract Enron email dataset",
-    )
     return parser
 
 
@@ -43,7 +38,6 @@ def main() -> None:
 
         summary = run_phase1(
             project_root=PROJECT_ROOT,
-            download_enron=args.download_enron,
         )
         print(summary)
     else:

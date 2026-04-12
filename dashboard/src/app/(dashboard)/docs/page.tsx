@@ -78,7 +78,7 @@ const endpoints: Endpoint[] = [
     method: "POST",
     path: "/phase1/run",
     description:
-      "Execute the dataset collection and preprocessing pipeline. Optional: download_enron=true.",
+      "Execute the dataset collection and preprocessing pipeline.",
     badge: "Pipeline",
     badgeColor: "bg-rose-500/10 text-rose-500 border-rose-500/20",
   },

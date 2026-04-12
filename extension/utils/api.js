@@ -27,7 +27,7 @@ export async function analyzeEmail(payload) {
 
     const attachments = result.attachment_analysis?.files || [];
     const attScore = attachments.reduce((max, a) => Math.max(max, a.ml_analysis?.score || 0), 0);
-    
+
     const headerScore = result.header_analysis?.ml_analysis?.score || 0;
 
     return {
