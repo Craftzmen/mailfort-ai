@@ -9,5 +9,7 @@ transformers
 torch
 scipy
 numpy
+web3
+py-solc-x
 # Optional but recommended for .msg parsing:
 extract-msg

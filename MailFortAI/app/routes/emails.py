@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import EmailLog
+from app.reports.forensics import ForensicReportGenerator
 
 router = APIRouter(prefix="/api")
 
@@ -87,8 +88,54 @@ def get_email_report(
         raise HTTPException(status_code=404, detail="Email not found")
 
     report: Any = email.forensic_report
+    report_generated = False
+    report_updated = False
+
     if not isinstance(report, dict) or not report:
-        raise HTTPException(status_code=404, detail="Forensic report not found for this email")
+        analysis_payload: Any = email.analysis_result
+        if not isinstance(analysis_payload, dict) or not analysis_payload:
+            raise HTTPException(status_code=404, detail="Forensic report not found for this email")
+
+        nested_report = analysis_payload.get("forensic_report")
+        if isinstance(nested_report, dict) and nested_report:
+            report = dict(nested_report)
+        else:
+            report = ForensicReportGenerator.generate_report(analysis_payload)
+            report_generated = True
+
+    blockchain_tx_id = str(email.blockchain_tx_id or report.get("blockchain_tx") or "").strip()
+    if blockchain_tx_id:
+        if report.get("blockchain_tx") != blockchain_tx_id:
+            report["blockchain_tx"] = blockchain_tx_id
+            report_updated = True
+        if report.get("blockchain_verified") is not True:
+            report["blockchain_verified"] = True
+            report_updated = True
+    else:
+        if "blockchain_tx" not in report:
+            report["blockchain_tx"] = None
+            report_updated = True
+        if "blockchain_verified" not in report:
+            report["blockchain_verified"] = False
+            report_updated = True
+
+    if "blockchain_status" not in report:
+        report["blockchain_status"] = {
+            "connected": False,
+            "contract_ready": bool(blockchain_tx_id),
+            "contract_address": None,
+            "account": None,
+            "rpc_url": None,
+            "auto_deploy_enabled": False,
+            "reason": "legacy_record" if blockchain_tx_id else "not_available",
+        }
+        report_updated = True
+
+    if report_generated or report_updated or email.forensic_report != report:
+        email.forensic_report = report
+        db.add(email)
+        db.commit()
+        db.refresh(email)
 
     if format == "markdown":
         markdown_report = report.get("markdown_report")

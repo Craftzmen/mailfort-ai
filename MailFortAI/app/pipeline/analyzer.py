@@ -97,14 +97,25 @@ def analyze_email(
     evidence_json = json.dumps(evidence_data, sort_keys=True)
     evidence_hash = hashlib.sha256(evidence_json.encode()).hexdigest()
     
-    blockchain_tx = blockchain.record_evidence(evidence_hash, final_verdict)
+    blockchain_tx = blockchain.record_evidence(
+        evidence_hash,
+        final_verdict,
+        version=str(forensic_report.get("report_version") or "1.0.0"),
+    )
+    blockchain_status = blockchain.get_status()
+    forensic_report["blockchain_status"] = blockchain_status
+
     if blockchain_tx:
         forensic_report["blockchain_verified"] = True
         forensic_report["blockchain_tx"] = blockchain_tx
+    else:
+        forensic_report.setdefault("blockchain_verified", False)
+        forensic_report.setdefault("blockchain_tx", None)
 
     return {
         **full_analysis,
         "forensic_report": forensic_report,
         "blockchain_tx_id": blockchain_tx,
+        "blockchain_status": blockchain_status,
         "evidence_hash": evidence_hash
     }

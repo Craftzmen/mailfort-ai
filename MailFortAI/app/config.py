@@ -27,6 +27,19 @@ CORS_ORIGINS: list[str] = os.getenv("CORS_ORIGINS", "*").split(",")
 VIRUSTOTAL_API_KEY: str = os.getenv("VIRUSTOTAL_API_KEY", "")
 ABUSEIPDB_API_KEY: str = os.getenv("ABUSEIPDB_API_KEY", "")
 
+# ── Blockchain ─────────────────────────────────────────────────────────────
+BLOCKCHAIN_RPC_URL: str = os.getenv("BLOCKCHAIN_RPC_URL", "http://127.0.0.1:7545")
+BLOCKCHAIN_CONTRACT_ADDRESS: str = os.getenv("BLOCKCHAIN_CONTRACT_ADDRESS", "").strip()
+BLOCKCHAIN_AUTO_DEPLOY: bool = os.getenv("BLOCKCHAIN_AUTO_DEPLOY", "false").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+BLOCKCHAIN_STATE_FILE: Path = Path(
+    os.getenv("BLOCKCHAIN_STATE_FILE", str(PROJECT_ROOT / "data" / "blockchain_contract.json"))
+)
+
 # ── App Meta ─────────────────────────────────────────────────────────────
 APP_TITLE = "MailFort AI"
 APP_VERSION = "1.0.0"

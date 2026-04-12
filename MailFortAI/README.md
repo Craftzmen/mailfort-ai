@@ -39,6 +39,28 @@ export VIRUSTOTAL_API_KEY="your_key"
 export ABUSEIPDB_API_KEY="your_key"
 ```
 
+### Blockchain Configuration (Forensic Integrity)
+
+Set blockchain runtime values before launching the API:
+
+```bash
+export BLOCKCHAIN_RPC_URL="http://127.0.0.1:7545"
+export BLOCKCHAIN_CONTRACT_ADDRESS=""
+export BLOCKCHAIN_AUTO_DEPLOY="false"
+```
+
+Notes:
+
+- If `BLOCKCHAIN_CONTRACT_ADDRESS` is empty and auto-deploy is disabled, reports are still generated but blockchain recording is skipped.
+- Set `BLOCKCHAIN_AUTO_DEPLOY=true` to let MailFort deploy `EvidenceRegistry.sol` automatically on startup (requires `py-solc-x` and a writable local chain).
+
+Runtime blockchain diagnostics endpoints:
+
+```bash
+curl http://127.0.0.1:8000/api/blockchain/status
+curl -X POST http://127.0.0.1:8000/api/blockchain/deploy
+```
+
 ## Run Phase 1 Pipeline
 
 ```bash
