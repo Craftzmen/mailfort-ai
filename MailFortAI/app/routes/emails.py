@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import EmailLog
+from app.blockchain.service import BlockchainService
 from app.reports.forensics import ForensicReportGenerator
 
 router = APIRouter(prefix="/api")
@@ -130,6 +131,16 @@ def get_email_report(
             "reason": "legacy_record" if blockchain_tx_id else "not_available",
         }
         report_updated = True
+
+    # Keep blockchain runtime status fresh so the dashboard reflects live RPC/contract state.
+    try:
+        live_blockchain_status = BlockchainService(auto_deploy=False).get_status()
+        if report.get("blockchain_status") != live_blockchain_status:
+            report["blockchain_status"] = live_blockchain_status
+            report_updated = True
+    except Exception:
+        # Fall back to the stored snapshot if live status retrieval fails.
+        pass
 
     if report_generated or report_updated or email.forensic_report != report:
         email.forensic_report = report

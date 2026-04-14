@@ -69,12 +69,31 @@ def analyze_attachments(
     parsed_attachments = email_record.get("attachments", []) or []
     if not results and parsed_attachments:
         for att in parsed_attachments:
-            ml_prediction = ml_service.predict(att)
+            if isinstance(att, dict):
+                attachment_meta = {
+                    "filename": att.get("filename"),
+                    "content_type": att.get("content_type", "application/octet-stream"),
+                    "size": att.get("size", 0),
+                    "sha256": att.get("sha256"),
+                }
+            elif isinstance(att, str):
+                # Some parsers provide only attachment filenames.
+                attachment_meta = {
+                    "filename": att,
+                    "content_type": "application/octet-stream",
+                    "size": 0,
+                    "sha256": "",
+                }
+            else:
+                continue
+
+            ml_prediction = ml_service.predict(attachment_meta)
+            sha256_hash = str(attachment_meta.get("sha256") or "")
             results.append({
-                "filename": att.get("filename"),
-                "sha256": att.get("sha256"),
+                "filename": attachment_meta.get("filename"),
+                "sha256": sha256_hash or None,
                 "ml_analysis": ml_prediction,
-                "vt_result": virustotal.get_file_report(att["sha256"]) if att.get("sha256") else {}
+                "vt_result": virustotal.get_file_report(sha256_hash) if sha256_hash else {}
             })
 
     return {
