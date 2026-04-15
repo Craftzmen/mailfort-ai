@@ -370,13 +370,15 @@ async function generateAndDownloadForensicPdf(input: PdfReportInput): Promise<vo
 
   addSectionTitle("Blockchain Integrity Status");
   const blockchainStatus = input.report.blockchain_status;
+  const resolvedBlockchainTxId = input.blockchainTxId || input.report.blockchain_tx || "";
+  const isBlockchainVerified = Boolean(resolvedBlockchainTxId || input.report.blockchain_verified);
   autoTable(doc, {
     startY: cursorY,
     margin: { left: marginX, right: marginX },
     head: [["Attribute", "Value"]],
     body: [
-      ["Blockchain Verified", input.report.blockchain_verified ? "Yes" : "No"],
-      ["Transaction ID", truncateForPdf(input.blockchainTxId || input.report.blockchain_tx || "N/A", 120)],
+      ["Blockchain Verified", isBlockchainVerified ? "Yes" : "No"],
+      ["Transaction ID", truncateForPdf(resolvedBlockchainTxId || "N/A", 120)],
       ["RPC Connected", blockchainStatus?.connected ? "Yes" : "No"],
       ["Contract Ready", blockchainStatus?.contract_ready ? "Yes" : "No"],
       ["Contract Address", truncateForPdf(blockchainStatus?.contract_address || "N/A", 120)],
