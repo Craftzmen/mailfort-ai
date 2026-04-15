@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import axios from "axios";
 import { motion } from "framer-motion";
 import { 
   ShieldAlert, 
@@ -89,6 +90,7 @@ export default function DashboardOverview() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [recentEmails, setRecentEmails] = useState<EmailLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -98,8 +100,26 @@ export default function DashboardOverview() {
       ]);
       setStats(statsData);
       setRecentEmails(emailsData);
+      setFetchError(null);
     } catch (error) {
       console.error("Failed to fetch dashboard metrics:", error);
+      if (axios.isAxiosError(error)) {
+        if (!error.response) {
+          setFetchError("Dashboard cannot reach the backend API. Verify backend is running and frontend proxy is configured.");
+        } else {
+          const responseDetail =
+            typeof error.response.data === "string"
+              ? error.response.data
+              : (error.response.data as { detail?: unknown } | undefined)?.detail;
+          const normalizedDetail =
+            typeof responseDetail === "string" && responseDetail.trim().length > 0
+              ? ` ${responseDetail}`
+              : "";
+          setFetchError(`Backend request failed (${error.response.status}).${normalizedDetail}`);
+        }
+      } else {
+        setFetchError("Unable to load dashboard metrics due to an unexpected error.");
+      }
     } finally {
       setLoading(false);
     }
@@ -139,6 +159,14 @@ export default function DashboardOverview() {
         <p className="text-slate-400">Real-time threat intelligence and system metrics.</p>
       </div>
 
+      {fetchError ? (
+        <Card className="bg-rose-500/10 border-rose-500/30">
+          <CardContent className="pt-6">
+            <p className="text-sm text-rose-200">{fetchError}</p>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {/* Stats Cards Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <motion.div variants={item}>
@@ -146,7 +174,7 @@ export default function DashboardOverview() {
             <CardHeader className="pb-2">
               <CardDescription className="text-slate-400 font-medium">Total Analyzed</CardDescription>
               <CardTitle className="text-3xl font-bold text-white flex items-center justify-between">
-                {loading ? "..." : stats?.total}
+                {loading ? "..." : total}
                 <Mail className="w-5 h-5 text-primary opacity-50 group-hover:opacity-100 transition-opacity" />
               </CardTitle>
             </CardHeader>

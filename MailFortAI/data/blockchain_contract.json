@@ -1,7 +1,7 @@
 {
   "rpc_url": "http://127.0.0.1:7545",
   "chain_id": 1337,
-  "contract_address": "0x49a833522aE330627b97E6527D5e38A539095a6f",
+  "contract_address": "0x47D3C2D0a689A44E8Cce467b712cCFC3282a1Aa8",
   "contract_abi": [
     {
       "anonymous": false,

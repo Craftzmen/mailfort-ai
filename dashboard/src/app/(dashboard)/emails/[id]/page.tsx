@@ -6,7 +6,6 @@ import {
   Activity,
   AlertTriangle,
   ArrowLeft,
-  Download,
   FileCode,
   FileDown,
   FileText,
@@ -33,7 +32,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { emailsService, EmailDetail, ForensicReport } from "@/services/api";
+import { emailsService, BlockchainStatus, EmailDetail, ForensicReport } from "@/services/api";
 import { cn } from "@/lib/utils";
 
 type UrlTelemetryItem = {
@@ -63,6 +62,17 @@ type AttachmentTelemetryItem = {
 type IpTelemetryItem = {
   ip?: string;
   abuseipdb?: { abuse_score?: number; country?: string; isp?: string };
+};
+
+type PdfReportInput = {
+  emailId: number;
+  sender: string;
+  subject: string;
+  verdict: string;
+  createdAt: string;
+  analysisConfidence: number;
+  report: ForensicReport;
+  blockchainTxId?: string | null;
 };
 
 function toNumber(value: unknown): number {
@@ -125,6 +135,41 @@ function formatSafeDateTime(value?: string): string {
   return format(parsed, "yyyy-MM-dd HH:mm:ss");
 }
 
+function formatBlockchainReason(reason?: string): string {
+  if (!reason) {
+    return "UNKNOWN";
+  }
+
+  return reason.replace(/_/g, " ").toUpperCase();
+}
+
+function getBlockchainReasonMessage(reason?: string, autoDeployEnabled?: boolean): string {
+  switch (reason) {
+    case "ready":
+      return "Evidence was successfully recorded on-chain.";
+    case "rpc_unreachable":
+      return "Blockchain RPC is unreachable. Ensure Ganache/Hardhat is running and BLOCKCHAIN_RPC_URL is correct.";
+    case "no_account":
+      return "Blockchain RPC is reachable, but no unlocked account is available for transactions.";
+    case "contract_not_configured":
+      return autoDeployEnabled
+        ? "Contract is not available yet. Auto-deploy is enabled, but deployment has not succeeded."
+        : "No smart contract is configured. Set BLOCKCHAIN_CONTRACT_ADDRESS or deploy one via /api/blockchain/deploy.";
+    case "deploy_failed":
+      return "Contract deployment failed. Check backend logs for Solidity compile/deploy errors.";
+    case "record_failed":
+      return "Contract is available, but transaction submission failed while recording evidence.";
+    case "contract_source_missing":
+      return "Contract source file was not found. Ensure contracts/EvidenceRegistry.sol exists in backend project.";
+    case "legacy_record":
+      return "This report predates blockchain telemetry fields and may not include full status details.";
+    case "not_available":
+      return "No blockchain status was recorded for this report.";
+    default:
+      return "Blockchain status is currently unavailable.";
+  }
+}
+
 function triggerFileDownload(filename: string, content: string, mimeType: string): void {
   const blob = new Blob([content], { type: mimeType });
   const objectUrl = URL.createObjectURL(blob);
@@ -135,6 +180,230 @@ function triggerFileDownload(filename: string, content: string, mimeType: string
   link.click();
   link.remove();
   URL.revokeObjectURL(objectUrl);
+}
+
+function truncateForPdf(value: unknown, maxLen: number = 240): string {
+  const text = String(value ?? "").replace(/\s+/g, " ").trim();
+  if (text.length <= maxLen) {
+    return text;
+  }
+  return `${text.slice(0, Math.max(0, maxLen - 3))}...`;
+}
+
+function summarizeEvidence(evidence: Record<string, unknown> | undefined): string {
+  if (!evidence || Object.keys(evidence).length === 0) {
+    return "No evidence payload attached.";
+  }
+  const pairs = Object.entries(evidence).slice(0, 4).map(([k, v]) => `${k}: ${truncateForPdf(v, 70)}`);
+  return pairs.join(" | ");
+}
+
+async function generateAndDownloadForensicPdf(input: PdfReportInput): Promise<void> {
+  const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
+
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const marginX = 42;
+
+  doc.setFillColor(10, 25, 47);
+  doc.rect(0, 0, pageWidth, 116, "F");
+  doc.setFillColor(30, 64, 175);
+  doc.rect(0, 106, pageWidth, 10, "F");
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(22);
+  doc.text("MailFort AI - Forensic Threat Report", marginX, 50);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(`Generated: ${formatSafeDateTime(input.report.generated_at || input.createdAt)}`, marginX, 72);
+  doc.text(`Report ID: ${input.report.report_id || `EMAIL-${String(input.emailId).padStart(6, "0")}`}`, marginX, 88);
+
+  doc.setTextColor(17, 24, 39);
+  let cursorY = 142;
+
+  const addSectionTitle = (title: string): void => {
+    if (cursorY > pageHeight - 72) {
+      doc.addPage();
+      cursorY = 56;
+    }
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(15, 23, 42);
+    doc.text(title, marginX, cursorY);
+    cursorY += 10;
+  };
+
+  addSectionTitle("Executive Summary");
+  doc.setDrawColor(59, 130, 246);
+  doc.line(marginX, cursorY, pageWidth - marginX, cursorY);
+  cursorY += 14;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10.5);
+  const summary = input.report.summary || "No automated summary available.";
+  const wrappedSummary = doc.splitTextToSize(summary, pageWidth - marginX * 2);
+  doc.text(wrappedSummary, marginX, cursorY);
+  cursorY += wrappedSummary.length * 14 + 12;
+
+  addSectionTitle("Case Metadata");
+  autoTable(doc, {
+    startY: cursorY,
+    margin: { left: marginX, right: marginX },
+    head: [["Field", "Value"]],
+    body: [
+      ["Email ID", String(input.emailId)],
+      ["Sender", truncateForPdf(input.sender, 140)],
+      ["Subject", truncateForPdf(input.subject, 140)],
+      ["Verdict", input.verdict],
+      ["Severity", input.report.severity || "N/A"],
+      ["Threat Score", `${toNumber(input.report.risk_score).toFixed(1)}%`],
+      ["Analysis Confidence", `${Math.max(0, Math.min(100, input.analysisConfidence)).toFixed(1)}%`],
+      ["Created At", formatSafeDateTime(input.createdAt)],
+    ],
+    styles: { fontSize: 9.5, cellPadding: 6, textColor: [17, 24, 39] },
+    headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: "bold" },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    theme: "striped",
+  });
+  cursorY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY
+    ? (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 18
+    : cursorY + 18;
+
+  addSectionTitle("Risk Factors and Recommendations");
+  const riskFactors = (input.report.risk_factors || []).slice(0, 10);
+  const recommendations = (input.report.recommendations || []).slice(0, 10);
+  const maxRows = Math.max(riskFactors.length, recommendations.length, 1);
+  autoTable(doc, {
+    startY: cursorY,
+    margin: { left: marginX, right: marginX },
+    head: [["Risk Factors", "Recommendations"]],
+    body: Array.from({ length: maxRows }).map((_, idx) => [
+      riskFactors[idx] ? `- ${truncateForPdf(riskFactors[idx], 120)}` : "-",
+      recommendations[idx] ? `- ${truncateForPdf(recommendations[idx], 120)}` : "-",
+    ]),
+    styles: { fontSize: 9, cellPadding: 6 },
+    headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: "bold" },
+    theme: "grid",
+  });
+  cursorY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable
+    ? (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 18
+    : cursorY + 18;
+
+  addSectionTitle("Indicators Snapshot");
+  const indicators = input.report.indicators || {};
+  autoTable(doc, {
+    startY: cursorY,
+    margin: { left: marginX, right: marginX },
+    head: [["Indicator Type", "Count", "Preview"]],
+    body: [
+      [
+        "Suspicious URLs",
+        String((indicators.suspicious_urls || []).length),
+        truncateForPdf((indicators.suspicious_urls || []).slice(0, 3).join(" | ") || "None", 120),
+      ],
+      [
+        "Suspicious Attachments",
+        String((indicators.suspicious_attachments || []).length),
+        truncateForPdf((indicators.suspicious_attachments || []).slice(0, 3).join(" | ") || "None", 120),
+      ],
+      [
+        "Header Anomalies",
+        String((indicators.header_anomalies || []).length),
+        truncateForPdf((indicators.header_anomalies || []).slice(0, 3).join(" | ") || "None", 120),
+      ],
+    ],
+    styles: { fontSize: 9, cellPadding: 6 },
+    headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: "bold" },
+    theme: "striped",
+  });
+  cursorY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable
+    ? (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 18
+    : cursorY + 18;
+
+  addSectionTitle("Module Scores");
+  const moduleScores = input.report.module_scores || {};
+  autoTable(doc, {
+    startY: cursorY,
+    margin: { left: marginX, right: marginX },
+    head: [["Module", "Score"]],
+    body: [
+      ["NLP", `${toNumber(moduleScores.nlp).toFixed(1)}%`],
+      ["URL", `${toNumber(moduleScores.url).toFixed(1)}%`],
+      ["Header", `${toNumber(moduleScores.header).toFixed(1)}%`],
+      ["Attachment", `${toNumber(moduleScores.attachment).toFixed(1)}%`],
+      ["Final", `${toNumber(moduleScores.final ?? input.report.risk_score).toFixed(1)}%`],
+    ],
+    styles: { fontSize: 9.5, cellPadding: 6 },
+    headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: "bold" },
+    theme: "grid",
+  });
+  cursorY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable
+    ? (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 18
+    : cursorY + 18;
+
+  addSectionTitle("Key Findings");
+  const findings = (input.report.findings || []).slice(0, 20);
+  autoTable(doc, {
+    startY: cursorY,
+    margin: { left: marginX, right: marginX },
+    head: [["Module", "Severity", "Finding", "Recommendation", "Evidence"]],
+    body: findings.length
+      ? findings.map((finding) => [
+          String(finding.module || "module").toUpperCase(),
+          String(finding.severity || "info").toUpperCase(),
+          truncateForPdf(finding.title || "Untitled finding", 90),
+          truncateForPdf(finding.recommendation || "Continue monitoring.", 100),
+          truncateForPdf(summarizeEvidence(finding.evidence), 150),
+        ])
+      : [["-", "-", "No high-confidence findings were recorded.", "-", "-"]],
+    styles: { fontSize: 8.5, cellPadding: 5.5, valign: "top" },
+    headStyles: { fillColor: [127, 29, 29], textColor: [255, 255, 255], fontStyle: "bold" },
+    theme: "striped",
+  });
+  cursorY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable
+    ? (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 18
+    : cursorY + 18;
+
+  addSectionTitle("Blockchain Integrity Status");
+  const blockchainStatus = input.report.blockchain_status;
+  autoTable(doc, {
+    startY: cursorY,
+    margin: { left: marginX, right: marginX },
+    head: [["Attribute", "Value"]],
+    body: [
+      ["Blockchain Verified", input.report.blockchain_verified ? "Yes" : "No"],
+      ["Transaction ID", truncateForPdf(input.blockchainTxId || input.report.blockchain_tx || "N/A", 120)],
+      ["RPC Connected", blockchainStatus?.connected ? "Yes" : "No"],
+      ["Contract Ready", blockchainStatus?.contract_ready ? "Yes" : "No"],
+      ["Contract Address", truncateForPdf(blockchainStatus?.contract_address || "N/A", 120)],
+      ["Account", truncateForPdf(blockchainStatus?.account || "N/A", 120)],
+      ["RPC URL", truncateForPdf(blockchainStatus?.rpc_url || "N/A", 120)],
+      ["Reason", truncateForPdf(blockchainStatus?.reason || "not_available", 120)],
+    ],
+    styles: { fontSize: 9.5, cellPadding: 6 },
+    headStyles: { fillColor: [15, 118, 110], textColor: [255, 255, 255], fontStyle: "bold" },
+    theme: "grid",
+  });
+
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i += 1) {
+    doc.setPage(i);
+    doc.setFontSize(8.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      `MailFort AI Confidential - Page ${i} of ${pageCount}`,
+      pageWidth - marginX,
+      pageHeight - 16,
+      { align: "right" }
+    );
+  }
+
+  const reportId = input.report.report_id || `EMAIL-${String(input.emailId).padStart(6, "0")}`;
+  doc.save(`mailfort-report-${reportId}.pdf`);
 }
 
 export default function EmailDetailPage() {
@@ -148,6 +417,7 @@ export default function EmailDetailPage() {
   const [report, setReport] = useState<ForensicReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [isReporting, setIsReporting] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [isLoadingReport, setIsLoadingReport] = useState(false);
   const [reportNotice, setReportNotice] = useState<string | null>(null);
 
@@ -226,10 +496,6 @@ export default function EmailDetailPage() {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   const handleDownloadJsonReport = () => {
     if (!report) {
       alert("No generated report is available to download yet.");
@@ -242,6 +508,45 @@ export default function EmailDetailPage() {
       `${JSON.stringify(report, null, 2)}\n`,
       "application/json"
     );
+  };
+
+  const handleGenerateReport = async () => {
+    if (Number.isNaN(emailId) || isGeneratingReport) {
+      return;
+    }
+
+    setIsGeneratingReport(true);
+    setReportNotice(null);
+    try {
+      const payload = await emailsService.getEmailReport(emailId);
+      setReport(payload.report);
+
+      const ai = (data?.analysis_result?.ai_analysis || {}) as { confidence?: number; score?: number };
+      const confidenceSource =
+        typeof ai.confidence === "number"
+          ? ai.confidence * 100
+          : typeof ai.score === "number"
+            ? ai.score * 100
+            : toNumber(payload.report?.module_scores?.nlp);
+
+      await generateAndDownloadForensicPdf({
+        emailId,
+        sender: data?.sender || payload.sender,
+        subject: data?.subject || payload.subject,
+        verdict: data?.verdict || payload.verdict,
+        createdAt: data?.created_at || payload.created_at,
+        analysisConfidence: Math.max(0, Math.min(100, confidenceSource)),
+        report: payload.report,
+        blockchainTxId: data?.blockchain_tx_id || payload.report?.blockchain_tx || null,
+      });
+
+      setReportNotice("Forensic report generated and PDF downloaded successfully.");
+    } catch (error) {
+      console.error("Failed to generate forensic report:", error);
+      setReportNotice("Failed to generate PDF report. Please try again.");
+    } finally {
+      setIsGeneratingReport(false);
+    }
   };
 
   const handleDownloadMarkdownReport = async () => {
@@ -354,6 +659,14 @@ export default function EmailDetailPage() {
   const reportRecommendations = Array.isArray(report?.recommendations) ? report.recommendations : [];
   const reportModuleDetails = report?.forensic_details || {};
   const reportIndicators = report?.indicators || {};
+  const blockchainStatus: BlockchainStatus | undefined = report?.blockchain_status;
+  const blockchainTxId = data.blockchain_tx_id || report?.blockchain_tx || null;
+  const blockchainReasonCode =
+    blockchainStatus?.reason || (report?.blockchain_verified ? "ready" : "not_available");
+  const blockchainReasonText = getBlockchainReasonMessage(
+    blockchainReasonCode,
+    blockchainStatus?.auto_deploy_enabled
+  );
 
   const vStyles = getVerdictStyles(verdict);
   const VerdictIcon = vStyles.icon;
@@ -370,6 +683,16 @@ export default function EmailDetailPage() {
           Log Repository
         </Button>
         <div className="flex flex-wrap gap-3 justify-end">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleGenerateReport}
+            disabled={isGeneratingReport || Number.isNaN(emailId)}
+            className="no-print"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            {isGeneratingReport ? "Generating..." : "Generate Report"}
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -403,15 +726,6 @@ export default function EmailDetailPage() {
           >
             <FileDown className="w-4 h-4 mr-2" />
             Download Markdown
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handlePrint}
-            className="bg-white/5 border-white/10 no-print"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Generate PDF Report
           </Button>
         </div>
       </div>
@@ -736,17 +1050,51 @@ export default function EmailDetailPage() {
                   <Hash className="w-3 h-3 text-sky-500" />
                   Blockchain Verification
                 </h4>
-                {report?.blockchain_verified ? (
+                {report?.blockchain_verified && blockchainTxId ? (
                   <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 space-y-2">
                     <div className="flex items-center gap-2 text-emerald-500 text-xs font-bold">
                       <ShieldCheck className="w-4 h-4" />
                       Forensic Integrity Verified
                     </div>
-                    <p className="text-[10px] text-slate-400 font-mono break-all">TxID: {data.blockchain_tx_id || report.blockchain_tx}</p>
+                    <p className="text-[10px] text-slate-400 font-mono break-all">TxID: {blockchainTxId}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px] text-slate-400 font-mono">
+                      <p className="break-all">Contract: {blockchainStatus?.contract_address || "N/A"}</p>
+                      <p className="break-all">RPC: {blockchainStatus?.rpc_url || "N/A"}</p>
+                    </div>
                   </div>
                 ) : (
-                  <div className="p-3 rounded-lg bg-slate-900/50 border border-white/5">
-                    <p className="text-xs text-slate-500 italic">Not recorded on blockchain ledger.</p>
+                  <div className="p-3 rounded-lg bg-slate-900/50 border border-white/5 space-y-3">
+                    <p className="text-xs text-slate-300">{blockchainReasonText}</p>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge className="text-[10px] uppercase bg-white/5 border-white/10 text-slate-300">
+                        {formatBlockchainReason(blockchainReasonCode)}
+                      </Badge>
+                      <Badge
+                        className={cn(
+                          "text-[10px] uppercase border",
+                          blockchainStatus?.connected
+                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                            : "bg-rose-500/10 border-rose-500/30 text-rose-400"
+                        )}
+                      >
+                        {blockchainStatus?.connected ? "RPC Connected" : "RPC Offline"}
+                      </Badge>
+                      <Badge
+                        className={cn(
+                          "text-[10px] uppercase border",
+                          blockchainStatus?.contract_ready
+                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                            : "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                        )}
+                      >
+                        {blockchainStatus?.contract_ready ? "Contract Ready" : "Contract Missing"}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[10px] text-slate-500 font-mono">
+                      <p className="break-all">RPC: {blockchainStatus?.rpc_url || "N/A"}</p>
+                      <p className="break-all">Account: {blockchainStatus?.account || "N/A"}</p>
+                      <p className="break-all">Contract: {blockchainStatus?.contract_address || "N/A"}</p>
+                    </div>
                   </div>
                 )}
               </div>

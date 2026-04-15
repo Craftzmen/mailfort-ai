@@ -67,6 +67,40 @@ curl -X POST http://127.0.0.1:8000/api/blockchain/deploy
 python app.py --run-phase1
 ```
 
+## Train Local ML Models
+
+Use the model training scripts with dataset-specific inputs:
+
+```bash
+python scripts/train_model.py
+```
+
+This trains text models (Logistic Regression + BERT) from processed email text data:
+
+- `data/processed/emails.json` (default), or
+- a custom `--dataset` path in JSON/JSONL format.
+
+To train URL/Header/Attachment/Aggregator local models:
+
+```bash
+python scripts/train_all_models.py \
+  --url-dataset data/malicious_phish.csv \
+  --header-dataset data/header_auth_dataset.csv \
+  --attachment-dataset data/attachment_dataset.csv
+```
+
+Required columns:
+
+- URL dataset: `url`, `type`
+- Header dataset: `label` plus header/auth fields (`spf_result`, `dkim_result`, `dmarc_result`, `num_received_headers`, `reply_to`, `from_address`) or supported aliases
+- Attachment dataset: `label`, `filename`, `content_type`, `size` (aliases supported for filename/content_type/size)
+
+Notes:
+
+- Attachment training now requires real attachment metadata and no longer uses synthetic attachment rows.
+- Header and attachment training now fail fast if required schema fields are missing, even when aliases are allowed.
+- If a CSV is a Git LFS pointer, run `git lfs pull` before training.
+
 ## Runtime Threat Analysis API
 
 Start API server (example):

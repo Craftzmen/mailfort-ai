@@ -3,8 +3,115 @@ console.log("MailFort AI Content Script Loaded");
 let currentEmailId = null;
 let scanning = false;
 let scanTimeout = null;
+let extensionRuntimeUnavailable = false;
+let observer = null;
 
 const INJECT_BADGE_CLASS = 'mailfort-badge-injected';
+
+function isExtensionRuntimeAvailable() {
+  return Boolean(typeof chrome !== 'undefined' && chrome.runtime && typeof chrome.runtime.sendMessage === 'function');
+}
+
+function handleExtensionRuntimeFailure(errorMessage) {
+  extensionRuntimeUnavailable = true;
+  if (observer) {
+    observer.disconnect();
+  }
+  console.warn('MailFort extension runtime unavailable:', errorMessage);
+}
+
+function sendExtensionMessage(message) {
+  if (extensionRuntimeUnavailable || !isExtensionRuntimeAvailable()) {
+    return Promise.resolve({ success: false, error: 'Extension context unavailable. Reload the MailFort extension.' });
+  }
+
+  return new Promise((resolve) => {
+    try {
+      chrome.runtime.sendMessage(message, (response) => {
+        const lastError = chrome.runtime && chrome.runtime.lastError;
+        if (lastError) {
+          handleExtensionRuntimeFailure(lastError.message);
+          resolve({ success: false, error: lastError.message });
+          return;
+        }
+
+        resolve(response || { success: false, error: 'No response from extension background script.' });
+      });
+    } catch (error) {
+      handleExtensionRuntimeFailure(error.message);
+      resolve({ success: false, error: error.message });
+    }
+  });
+}
+
+function extractGmailAttachments() {
+  const names = new Set();
+  const containers = document.querySelectorAll('div.aQH, div.hq.gt');
+
+  const getAttachmentCountFallback = () => {
+    const candidateNodes = document.querySelectorAll('span, div');
+    for (const node of candidateNodes) {
+      const text = (node.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      if (!text) continue;
+
+      if (text === 'one attachment') return 1;
+
+      const match = text.match(/^(\d+)\s+attachments?$/);
+      if (match && match[1]) {
+        const count = Number(match[1]);
+        if (Number.isFinite(count) && count > 0) {
+          return Math.min(count, 12);
+        }
+      }
+    }
+
+    return 0;
+  };
+
+  const pushCandidate = (value) => {
+    if (!value) return;
+    const text = String(value).replace(/\s+/g, ' ').trim();
+    if (!text) return;
+
+    // Prefer values that look like filenames.
+    const match = text.match(/([^\\/:*?"<>|\n]+\.[a-z0-9]{2,8})$/i);
+    if (match && match[1]) {
+      names.add(match[1]);
+      return;
+    }
+
+    // Gmail often stores the filename directly in data-tooltip.
+    if (/\.[a-z0-9]{2,8}$/i.test(text)) {
+      names.add(text);
+    }
+  };
+
+  containers.forEach((container) => {
+    container
+      .querySelectorAll('[download], [download_url], [data-tooltip], [aria-label], .aZo, .aV3, .aQA')
+      .forEach((node) => {
+        pushCandidate(node.getAttribute('download'));
+        pushCandidate(node.getAttribute('download_url'));
+        pushCandidate(node.getAttribute('data-tooltip'));
+        pushCandidate(node.getAttribute('aria-label'));
+        pushCandidate(node.textContent);
+      });
+  });
+
+  // Fallback for Gmail layouts where filenames are not directly exposed in the DOM.
+  if (names.size === 0) {
+    const attachmentCount = getAttachmentCountFallback();
+    for (let i = 0; i < attachmentCount; i += 1) {
+      names.add(`attachment-${i + 1}.bin`);
+    }
+  }
+
+  return Array.from(names).slice(0, 12).map((filename) => ({
+    filename,
+    content_type: 'application/octet-stream',
+    size: 0,
+  }));
+}
 
 function extractGmailData() {
   const subjectEl = document.querySelector('h2.hP');
@@ -20,6 +127,7 @@ function extractGmailData() {
     subject: subjectEl.innerText.trim(),
     sender: senderEl.getAttribute('email') || senderEl.innerText.trim(),
     body: latestBody.innerText.trim(),
+    attachments: extractGmailAttachments(),
     element: subjectEl.parentElement // Where to inject badge
   };
 }
@@ -46,6 +154,7 @@ function extractOutlookData() {
     subject: subjectEl.innerText.trim(),
     sender: senderEl ? senderEl.innerText.trim() : "Unknown Sender",
     body: bodyEl.innerText.trim(),
+    attachments: [],
     element: subjectEl.parentElement || subjectEl
   };
 }
@@ -150,7 +259,7 @@ function createBadge(result) {
     reportButton.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
-      chrome.runtime.sendMessage({ action: 'open_report_page' });
+      sendExtensionMessage({ action: 'open_report_page' });
     });
   }
   
@@ -184,14 +293,15 @@ function triggerScan() {
   }
 
   // Send to background for API call
-  chrome.runtime.sendMessage({
+  sendExtensionMessage({
     action: 'analyze_email',
     payload: {
       subject: emailData.subject,
       sender: emailData.sender,
-      body: emailData.body.substring(0, 5000) // limit body size
+      body: emailData.body.substring(0, 5000), // limit body size
+      attachments: Array.isArray(emailData.attachments) ? emailData.attachments : []
     }
-  }, (response) => {
+  }).then((response) => {
     scanning = false;
     if (scanningBadge.parentNode) {
       scanningBadge.remove();
@@ -215,7 +325,7 @@ function triggerScan() {
 }
 
 // Observe DOM for changes (new email opened)
-const observer = new MutationObserver((mutations) => {
+observer = new MutationObserver(() => {
   // Debounce the scanner
   clearTimeout(scanTimeout);
   scanTimeout = setTimeout(() => {
@@ -223,4 +333,12 @@ const observer = new MutationObserver((mutations) => {
   }, 1000);
 });
 
-observer.observe(document.body, { childList: true, subtree: true });
+if (document.body) {
+  observer.observe(document.body, { childList: true, subtree: true });
+} else {
+  window.addEventListener('DOMContentLoaded', () => {
+    if (!extensionRuntimeUnavailable && document.body) {
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+  }, { once: true });
+}

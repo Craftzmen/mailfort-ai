@@ -112,6 +112,17 @@ def load_processed_dataset(dataset_path: Optional[Path] = None) -> pd.DataFrame:
             "No processed dataset found. Expected data/processed/emails.json or data/processed/dataset.jsonl"
         )
 
+    has_label_key = any("label" in record for record in records)
+    has_clean_body_key = any("clean_body" in record for record in records)
+    has_body_key = any("body" in record for record in records)
+
+    if not has_label_key:
+        raise ValueError("Processed dataset missing required key 'label' across all records.")
+    if not (has_clean_body_key or has_body_key):
+        raise ValueError(
+            "Processed dataset missing required text key. Expected 'clean_body' or 'body' in records."
+        )
+
     rows: list[dict[str, Any]] = []
     for record in records:
         clean_body = str(record.get("clean_body") or record.get("body") or "").strip()
@@ -129,7 +140,10 @@ def load_processed_dataset(dataset_path: Optional[Path] = None) -> pd.DataFrame:
         )
 
     if not rows:
-        raise ValueError("Processed dataset did not contain usable clean_body + label rows.")
+        raise ValueError(
+            "Processed dataset did not contain usable text + label rows after validation. "
+            "Ensure records include non-empty 'clean_body' (or 'body') and 'label'."
+        )
 
     return pd.DataFrame(rows)
 

@@ -1,11 +1,33 @@
 import axios from 'axios';
 
-// Default to local FastAPI URL if not set
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
+// Prefer same-origin proxy (/api) to avoid browser CORS/localhost issues.
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || '/api').replace(/\/$/, '');
 
 const api = axios.create({
   baseURL: API_BASE_URL,
 });
+
+async function requestWithRetry<T>(request: () => Promise<T>, retries: number = 1): Promise<T> {
+  try {
+    return await request();
+  } catch (error) {
+    if (retries <= 0) {
+      throw error;
+    }
+
+    if (!axios.isAxiosError(error)) {
+      throw error;
+    }
+
+    const status = error.response?.status;
+    const isTransient = !error.response || status === 429 || (typeof status === "number" && status >= 500);
+    if (!isTransient) {
+      throw error;
+    }
+
+    return requestWithRetry(request, retries - 1);
+  }
+}
 
 export interface EmailLog {
   id: number;
@@ -71,6 +93,20 @@ export interface ForensicModuleScores {
   final?: number;
 }
 
+export interface BlockchainStatus {
+  connected?: boolean;
+  rpc_url?: string | null;
+  account?: string | null;
+  contract_ready?: boolean;
+  contract_address?: string | null;
+  reason?: string;
+  auto_deploy_enabled?: boolean;
+}
+
+export interface BlockchainRuntimeStatus extends BlockchainStatus {
+  can_record_evidence?: boolean;
+}
+
 export interface ForensicReport {
   report_id?: string;
   report_version?: string;
@@ -93,6 +129,7 @@ export interface ForensicReport {
   };
   blockchain_verified?: boolean;
   blockchain_tx?: string | null;
+  blockchain_status?: BlockchainStatus;
   markdown_report?: string;
 }
 
@@ -134,33 +171,33 @@ export interface Stats {
 
 export const emailsService = {
   getStats: async (): Promise<Stats> => {
-    const response = await api.get('/stats');
+    const response = await requestWithRetry(() => api.get('/stats'));
     return response.data;
   },
 
   getEmails: async (skip: number = 0, limit: number = 50, verdict?: string): Promise<EmailLog[]> => {
-    const response = await api.get('/emails', {
+    const response = await requestWithRetry(() => api.get('/emails', {
       params: { skip, limit, verdict }
-    });
+    }));
     return response.data;
   },
 
   getEmail: async (id: number): Promise<EmailDetail> => {
-    const response = await api.get(`/emails/${id}`);
+    const response = await requestWithRetry(() => api.get(`/emails/${id}`));
     return response.data;
   },
 
   getEmailReport: async (id: number): Promise<EmailReportResponse> => {
-    const response = await api.get(`/emails/${id}/report`);
+    const response = await requestWithRetry(() => api.get(`/emails/${id}/report`));
     return response.data;
   },
 
   getEmailReportMarkdown: async (id: number): Promise<string> => {
-    const response = await api.get(`/emails/${id}/report`, {
+    const response = await requestWithRetry(() => api.get(`/emails/${id}/report`, {
       params: { format: "markdown" },
       responseType: "text",
       headers: { Accept: "text/markdown" },
-    });
+    }));
     return response.data as string;
   },
 
@@ -170,31 +207,40 @@ export const emailsService = {
     skip: number = 0,
     verdict?: string,
   ): Promise<SearchEmailsResponse> => {
-    const response = await api.get('/search', {
+    const response = await requestWithRetry(() => api.get('/search', {
       params: { q: query, skip, limit, verdict }
-    });
+    }));
     return response.data;
   },
 
   reportIp: async (emailId: number): Promise<ReportIpResponse> => {
-    const response = await api.post(`/emails/${emailId}/report`);
+    const response = await requestWithRetry(() => api.post(`/emails/${emailId}/report`));
     return response.data;
   },
 
   clearAllEmails: async (): Promise<{ deleted: number }> => {
-    const response = await api.delete('/emails');
+    const response = await requestWithRetry(() => api.delete('/emails'));
     return response.data;
   },
 };
 
-// Health check (hits root, not /api)
-const rootApi = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://127.0.0.1:8000',
-});
-
 export const systemService = {
   healthCheck: async (): Promise<{ status: string; service: string }> => {
-    const response = await rootApi.get('/health');
+    const response = await requestWithRetry(() => api.get('/health'));
+    return response.data;
+  },
+
+  getBlockchainStatus: async (): Promise<BlockchainRuntimeStatus> => {
+    const response = await requestWithRetry(() => api.get('/blockchain/status'));
+    return response.data;
+  },
+
+  deployBlockchainContract: async (): Promise<{
+    message: string;
+    contract_address: string;
+    status: BlockchainRuntimeStatus;
+  }> => {
+    const response = await requestWithRetry(() => api.post('/blockchain/deploy'));
     return response.data;
   },
 };

@@ -14,17 +14,12 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional path to processed dataset file (emails.json or dataset.jsonl)",
     )
-    parser.add_argument(
-        "--skip-bert",
-        action="store_true",
-        help="Train only logistic regression baseline",
-    )
     return parser
 
 
 def main() -> None:
     args = _build_arg_parser().parse_args()
-    metrics = compare_models(dataset_path=args.dataset, train_bert=not args.skip_bert)
+    metrics = compare_models(dataset_path=args.dataset, train_bert=True)
     print_comparison(metrics)
 
 

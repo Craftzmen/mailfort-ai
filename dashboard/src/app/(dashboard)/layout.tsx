@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -26,6 +26,28 @@ const navItems = [
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
+function subscribeAuthToken(onStoreChange: () => void): () => void {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  const handleStorage = () => onStoreChange();
+  window.addEventListener("storage", handleStorage);
+  return () => window.removeEventListener("storage", handleStorage);
+}
+
+function getAuthSnapshot(): boolean | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return Boolean(localStorage.getItem("authToken"));
+}
+
+function getAuthServerSnapshot(): boolean | null {
+  return null;
+}
+
 export default function DashboardLayout({
   children,
 }: {
@@ -35,9 +57,11 @@ export default function DashboardLayout({
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-
-  const isAuthenticated =
-    typeof window !== "undefined" && Boolean(localStorage.getItem("authToken"));
+  const isAuthenticated = useSyncExternalStore(
+    subscribeAuthToken,
+    getAuthSnapshot,
+    getAuthServerSnapshot
+  );
 
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Enter") {
@@ -52,9 +76,9 @@ export default function DashboardLayout({
     );
   };
 
-  // Auth guard — runs only on client after hydration
+  // Redirect after hydration only when auth is explicitly missing.
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (isAuthenticated === false) {
       router.replace("/login");
     }
   }, [isAuthenticated, router]);
@@ -65,7 +89,7 @@ export default function DashboardLayout({
     router.replace("/login");
   };
 
-  if (!isAuthenticated) {
+  if (isAuthenticated !== true) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-950">
         <div className="flex flex-col items-center gap-4">
