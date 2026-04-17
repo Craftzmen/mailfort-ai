@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
   { name: "Threat Logs", href: "/emails", icon: Inbox },
+  { name: "Model Performance", href: "/models", icon: Shield },
   { name: "API Docs", href: "/docs", icon: FileText },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
